@@ -166,7 +166,7 @@ $ua->listen(
 		$from =~ s/[\s"\/<>[:^print:]]/_/g;
 		my ($sec, $min, $hour, $mday, $mon, $year) = localtime;
 		$year += 1900;
-		$mday += 1;
+		$mon += 1;
 		my $date = sprintf "%04d-%02d-%02d_%02d:%02d:%02d", $year, $mon, $mday, $hour, $min, $sec;
 		my $receive_file = $directory . '/' . $date . '_' . $from . '.wav';
 		my $receive_fh;
