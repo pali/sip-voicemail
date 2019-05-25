@@ -6,7 +6,7 @@ use warnings;
 use Getopt::Long qw(:config posix_default bundling);
 
 use Net::SIP;
-use Net::SIP::Util qw(INETSOCK invoke_callback);
+use Net::SIP::Util qw(create_rtp_sockets invoke_callback);
 
 my $wave_ulaw_header = "WAVEfmt \x12\x00\x00\x00\x07\x00\x01\x00\x40\x1f\x00\x00\x40\x1f\x00\x00\x01\x00\x08\x00\x00\x00";
 
@@ -112,25 +112,9 @@ $ua->listen(
 	cb_invite => sub {
 		my ($call, $request) = @_;
 		my $leg = $call->{param}->{leg};
-		my ($rtp_sock, $rtpc_sock);
-		for (my $i = $min_port; not defined $i or $i < $max_port; $i += 2) {
-			$rtp_sock = INETSOCK(
-				Proto => 'udp',
-				LocalAddr => $rtp,
-				LocalPort => $i,
-			);
-			last unless defined $i or $rtp_sock;
-			next unless defined $rtp_sock;
-			$rtpc_sock = INETSOCK(
-				Proto => 'udp',
-				LocalAddr => $rtp_sock->sockhost(),
-				LocalPort => $rtp_sock->sockport()+1,
-			);
-			last if $rtpc_sock;
-			last unless defined $i;
-		}
+		my ($rtp_port, $rtp_sock, $rtcp_sock) = create_rtp_sockets($rtp, 2, $min_port, $max_port);
 		$rtp_sock or do { print "Error: Cannot create rtp socket at $addr: $!\n"; die; };
-		$rtpc_sock or do { print "Error: Cannot create rtpc socket at $addr: $!\n"; die; };
+		$rtcp_sock or do { print "Error: Cannot create rtcp socket at $addr: $!\n"; die; };
 		my $sdp = Net::SIP::SDP->new(
 			{
 				addr => $sdpaddr,
@@ -138,13 +122,13 @@ $ua->listen(
 			{
 				media => 'audio',
 				proto => 'RTP/AVP',
-				port => $rtp_sock->sockport(),
+				port => $rtp_port,
 				range => 2,
 				fmt => [ 0 ],
 			},
 		);
 		$call->{param}->{sdp} = $sdp;
-		$call->{param}->{media_lsocks} = [ [ $rtp_sock, $rtpc_sock ] ];
+		$call->{param}->{media_lsocks} = [ [ $rtp_sock, $rtcp_sock ] ];
 	},
 	init_media => sub {
 		my ($call, $param) = @_;
