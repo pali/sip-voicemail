@@ -113,7 +113,7 @@ $ua->listen(
 		my ($call, $request) = @_;
 		my $leg = $call->{param}->{leg};
 		my ($rtp_sock, $rtpc_sock);
-		for (my $i = $min_port; $i < $max_port; $i += 2) {
+		for (my $i = $min_port; not defined $i or $i < $max_port; $i += 2) {
 			$rtp_sock = INETSOCK(
 				Proto => 'udp',
 				LocalAddr => $rtp,
@@ -127,9 +127,10 @@ $ua->listen(
 				LocalPort => $rtp_sock->sockport()+1,
 			);
 			last if $rtpc_sock;
+			last unless defined $i;
 		}
-		$rtp_sock or die "Error: Cannot create rtp socket at $addr: $!\n";
-		$rtpc_sock or die "Error: Cannot create rtpc socket at $addr: $!\n";
+		$rtp_sock or do { print "Error: Cannot create rtp socket at $addr: $!\n"; die; };
+		$rtpc_sock or do { print "Error: Cannot create rtpc socket at $addr: $!\n"; die; };
 		my $sdp = Net::SIP::SDP->new(
 			{
 				addr => $sdpaddr,
