@@ -276,8 +276,9 @@ $ua->listen(
 				print $receive_pipe "Content-Type: audio/vnd.wave; codec=7\n";
 				print $receive_pipe "Content-Disposition: attachment;\n";
 				print $receive_pipe "  filename=\"voicemail_${date}_${from}.wav\"\n";
-				print $receive_pipe "Content-Transfer-Encoding: binary\n";
+				print $receive_pipe "Content-Transfer-Encoding: base64\n";
 				print $receive_pipe "\n";
+				binmode $receive_pipe, ':via(Base64Stream)';
 				print $receive_pipe "RIFF\xff\xff\xff\xff";
 				print $receive_pipe $wave_ulaw_header;
 				print $receive_pipe "data\xff\xff\xff\xff";
@@ -297,3 +298,27 @@ print localtime . " - Starting main loop...\n";
 $ua->loop(undef, \$stop);
 $ua->cleanup();
 print localtime . " - Stopped\n";
+
+
+package PerlIO::via::Base64Stream;
+
+use MIME::Base64;
+
+sub PUSHED {
+	my ($class, $mode, $fh) = @_;
+	my $buf = '';
+	return bless \$buf, $class;
+}
+
+sub FLUSH {
+	my ($self, $fh) = @_;
+	print $fh encode_base64 substr $$self, 0, length $$self, '';
+	return 0;
+}
+
+sub WRITE {
+	my ($self, $buf, $fh) = @_;
+	$$self .= $buf;
+	print $fh encode_base64 substr $$self, 0, int(length($$self)/57)*57, '';
+	return length $buf;
+}
