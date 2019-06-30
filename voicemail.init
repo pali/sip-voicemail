@@ -47,7 +47,7 @@ do_start()
 	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null \
 		|| return 1
 	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --background --make-pidfile --no-close --chuid $USER -- \
-		$DAEMON_ARGS >> /var/log/voicemail.log 2>&1 \
+		$DAEMON_ARGS < /dev/null >> /var/log/voicemail.log 2>&1 \
 		|| return 2
 }
 
