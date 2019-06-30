@@ -1,0 +1,21 @@
+# Defaults for voicemail initscript
+# sourced by /etc/init.d/voicemail
+# installed at /etc/default/voicemail by the maintainer scripts
+
+#
+# This is a POSIX shell fragment
+#
+
+# Configuration for storing 30s voicemail on disk to VOICEMAIL home user folder
+#DAEMON_ARGS="-m -w %h/VOICEMAIL/welcome.wav -d %h/VOICEMAIL -a -t 30"
+#USER="root"
+
+# Configuration for sending 60s voicemail via email without welcome message
+#DAEMON_ARGS="-m -e %u -a -t 60"
+
+# Configuration to send voicemail via email and also store it on disk
+#DAEMON_ARGS="-m -w %h/VOICEMAIL/welcome.wav -d %h/VOICEMAIL -e %u -a -t 30"
+#USER="root"
+
+# Custom listen address or port range
+#DAEMON_ARGS="$DAEMON_ARGS -l udp:127.0.0.1:5062 -r 1.2.3.4 -p 35000:35100"
