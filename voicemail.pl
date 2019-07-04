@@ -67,7 +67,7 @@ Options:
   -i|--identity identity      SIP identity (default $identity)
   -f|--envelope-from address  Envelope From email address (default $env_from)
   -m|--multiuser              Enable multiuser mode, must be run as root (default single user)
-  -w|--welcome filename       Welcome file in Wave G.711 u-law 8kHz (PCMA) format (default none)
+  -w|--welcome filename       Welcome file in Wave G.711 u-law 8kHz (PCMU) format (default none)
   -d|--directory directory    Disk directory where to save received message files (default none)
   -e|--email address          Email address to which send received message files (default do not send)
   -a|--afterwelcome           Start recording after welcome message (default immediately)
