@@ -41,7 +41,7 @@ my $listen = 'udp:127.0.0.1:5060';
 my $rtp = '';
 my $ports = '';
 my $sdpaddr = '';
-my $identity = 'Voicemail <voicemail@localhost>';
+my $identity = 'Voicemail <sip:voicemail@localhost>';
 my $env_from = 'double-bounce';
 my $multiuser;
 my $welcome = '';
