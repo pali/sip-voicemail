@@ -15,25 +15,25 @@ my $wave_ulaw_header = "WAVEfmt \x12\x00\x00\x00\x07\x00\x01\x00\x40\x1f\x00\x00
 sub read_welcome_file {
 	my ($welcome_file) = @_;
 	open my $fh, '<', $welcome_file
-		or do { print "Error: Cannot open welcome file $welcome_file: $!\n"; return ''; };
+		or do { print localtime . " - Error: Cannot open welcome file $welcome_file: $!\n"; return ''; };
 	read($fh, my $header, 38) == 38
-		or do { print "Error: Welcome file $welcome_file is too short\n"; return ''; };
+		or do { print localtime . " - Error: Welcome file $welcome_file is too short\n"; return ''; };
 	substr($header, 0, 4) eq 'RIFF'
-		or do { print "Error: Welcome file $welcome_file is not in WAVE format\n"; return ''; };
+		or do { print localtime . " - Error: Welcome file $welcome_file is not in WAVE format\n"; return ''; };
 	substr($header, 8, 30) eq $wave_ulaw_header
-		or do { print "Error: Welcome file $welcome_file is not in WAVE G.711 u-law 8kHz (PCMU) format\n"; return ''; };
+		or do { print localtime . " - Error: Welcome file $welcome_file is not in WAVE G.711 u-law 8kHz (PCMU) format\n"; return ''; };
 	while (1) {
 		read($fh, my $type, 4) == 4
-			or do { print "Error: Welcome file $welcome_file has corrupted WAVE header\n"; return ''; };
+			or do { print localtime . " - Error: Welcome file $welcome_file has corrupted WAVE header\n"; return ''; };
 		last if $type eq 'data';
 		read($fh, my $length, 4) == 4
-			or do { print "Error: Welcome file $welcome_file has corrupted WAVE header\n"; return ''; };
+			or do { print localtime . " - Error: Welcome file $welcome_file has corrupted WAVE header\n"; return ''; };
 		$length = unpack 'V', $length;
 		read($fh, my $dummy, $length) == $length
-			or do { print "Error: Welcome file $welcome_file has corrupted WAVE header\n"; return ''; };
+			or do { print localtime . " - Error: Welcome file $welcome_file has corrupted WAVE header\n"; return ''; };
 	}
 	read($fh, my $length, 4) == 4
-		or do { print "Error: Welcome file $welcome_file has corrupted WAVE header\n"; return ''; };
+		or do { print localtime . " - Error: Welcome file $welcome_file has corrupted WAVE header\n"; return ''; };
 	return join '', <$fh>;
 }
 
@@ -257,7 +257,7 @@ $ua->listen(
 			if (not $receive_fh and length $receive_file) {
 				print localtime . " - Storing voicemail to file $receive_file\n";
 				open $receive_fh, '>', $receive_file
-					or do { print "Cannot open file $receive_file: $!\n"; $stop = 1; hangup($param); $call->bye; return; };
+					or do { print localtime . " - Error: Cannot open file $receive_file: $!\n"; $stop = 1; hangup($param); $call->bye; return; };
 				chown $param->{voicemail_user_uid}, $param->{voicemail_user_gid}, $receive_file if $multiuser;
 				print $receive_fh "RIFF\xff\xff\xff\xff";
 				print $receive_fh $wave_ulaw_header;
@@ -266,7 +266,7 @@ $ua->listen(
 			if (not $receive_pipe and length $receive_email) {
 				print localtime . " - Sending voicemail to email address $receive_email\n";
 				open $receive_pipe, '|-', '/usr/sbin/sendmail', '-oi', '-oeq', '-f', $env_from, $receive_email
-					or do { print "Cannot spawn /usr/sbin/sendmail binary: $!\n"; $stop = 1; hangup($param); $call->bye; return; };
+					or do { print localtime . " - Error: Cannot spawn /usr/sbin/sendmail binary: $!\n"; $stop = 1; hangup($param); $call->bye; return; };
 				print $receive_pipe "From: " . (length $from_name ? "$from_name <$from>" : $from) . "\n";
 				print $receive_pipe "To: " . (length $to_name ? "$to_name <$to>" : $to) . "\n";
 				print $receive_pipe "Date: $date_email\n";
