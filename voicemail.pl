@@ -144,6 +144,7 @@ $ua->listen(
 		($from) = sip_hdrval2parts(from => $from);
 		my $for = ($request->as_parts)[1];
 		print localtime . " - Incoming call for $for from: $from\n";
+		my $receive_email = $email;
 		if ($multiuser) {
 			my $for_user = (sip_uri2parts($for))[1];
 			my (undef, undef, $uid, $gid, undef, undef, undef, $home) = getpwnam($for_user);
@@ -164,6 +165,39 @@ $ua->listen(
 					return 0;
 				}
 			}
+			$receive_email =~ s/%u/$for_user/g;
+		}
+		if (length $receive_email) {
+			my $from_name = ($from =~ /^\s*(.*?)\s*</) ? $1 : '';
+			$from_name =~ s/[<>[:^print:]]/_/g;
+			$from =~ s/^.*<(?:sips?:)?([^>]+)>\s*$/$1/;
+			$from =~ s/[\s"\/<>[:^print:]]/_/g;
+			my ($to) = $request->get_header('to');
+			($to) = sip_hdrval2parts(to => $to);
+			my $to_name = ($to =~ /^\s*(.*?)\s*</) ? $1 : '';
+			$to_name =~ s/[<>[:^print:]]/_/g;
+			$to =~ s/^.*<(?:sips?:)?([^>]+)>\s*$/$1/;
+			$to =~ s/[\s"\/<>[:^print:]]/_/g;
+			my $t = time;
+			my ($sec, $min, $hour, $mday, $mon, $year, $wday) = gmtime($t);
+			my @mon_abbrv = qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
+			my @wday_abbrv = qw(Sun Mon Tue Wed Thu Fri Sat);
+			my $date_email = sprintf "%3s, %2d %3s %4d %02d:%02d:%02d +0000", $wday_abbrv[$wday], $mday, $mon_abbrv[$mon], 1900+$year, $hour, $min, $sec;
+			my ($call_id) = $request->get_header('call-id');
+			my $mid = (defined $call_id) ? ('<missed-call-id-' . $call_id . ($call_id =~ /@/ ? '' : '@localhost') . '>') : undef;
+			print localtime . " - Sending missed call event to email address $receive_email\n";
+			open my $missed_pipe, '|-', '/usr/sbin/sendmail', '-oi', '-oeq', '-f', $env_from, $receive_email
+				or do { print localtime . " - Error: Cannot spawn /usr/sbin/sendmail binary: $!\n"; print localtime . " - Rejecting call\n"; return 0; };
+			print $missed_pipe "From: " . (length $from_name ? "$from_name <$from>" : $from) . "\n";
+			print $missed_pipe "To: " . (length $to_name ? "$to_name <$to>" : $to) . "\n";
+			print $missed_pipe "Date: $date_email\n";
+			print $missed_pipe "Subject: SIP missed call\n";
+			print $missed_pipe "Message-ID: $mid\n" if defined $mid;
+			print $missed_pipe "MIME-Version: 1.0\n";
+			print $missed_pipe "Content-Type: text/plain\n";
+			print $missed_pipe "\n";
+			print $missed_pipe "You have a missed call.\n";
+			close $missed_pipe;
 		}
 		return 1;
 	},
