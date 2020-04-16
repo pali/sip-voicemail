@@ -240,7 +240,7 @@ $ua->listen(
 		$year += 1900;
 		$mon += 1;
 		my $date = sprintf "%04d-%02d-%02d_%02d:%02d:%02d", $year, $mon, $mday, $hour, $min, $sec;
-		my $mid = (defined $call->{param}->{voicemail_call_id}) ? ('<call-id-' . $call->{param}->{voicemail_call_id} . ($call->{param}->{voicemail_call_id} =~ /@/ ? '' : '@localhost') . '>') : undef;
+		my $mid = (defined $call->{param}->{voicemail_call_id}) ? ('<voicemail-call-id-' . $call->{param}->{voicemail_call_id} . ($call->{param}->{voicemail_call_id} =~ /@/ ? '' : '@localhost') . '>') : undef;
 		my $receive_directory = $multiuser ? $param->{voicemail_user_directory} : $directory;
 		my $receive_file = length $receive_directory ? ($receive_directory . '/voicemail_' . $date . '_' . $from . '.wav') : '';
 		my $receive_email = $multiuser ? $param->{voicemail_user_email} : $email;
