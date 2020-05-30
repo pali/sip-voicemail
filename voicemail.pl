@@ -203,7 +203,6 @@ $ua->listen(
 	},
 	cb_invite => sub {
 		my ($call, $request) = @_;
-		my $leg = $call->{param}->{leg};
 		my ($rtp_port, $rtp_sock, $rtcp_sock) = create_rtp_sockets($rtp, 2, $min_port, $max_port);
 		$rtp_sock or do { print localtime . " - Error: Cannot create rtp socket at $addr: $!\n"; die; };
 		$rtcp_sock or do { print localtime . " - Error: Cannot create rtcp socket at $addr: $!\n"; die; };
