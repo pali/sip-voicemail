@@ -171,13 +171,21 @@ $ua->listen(
 		if (length $receive_email) {
 			my $from_name = ($from =~ /^\s*(.*?)\s*</) ? $1 : '';
 			$from_name =~ s/[<>[:^print:]]/_/g;
-			$from =~ s/^.*<(?:sips?:)?([^>]+)>\s*$/$1/;
+			if ($from =~ /^.*<[^>]+>\s*$/) {
+				$from =~ s/^.*<(?:sips?:)?([^>]+)>\s*$/$1/;
+			} else {
+				$from =~ s/^\s*(?:sips?:)?([^\s]+)\s*$/$1/;
+			}
 			$from =~ s/[\s"\/<>[:^print:]]/_/g;
 			my ($to) = $request->get_header('to');
 			($to) = sip_hdrval2parts(to => $to);
 			my $to_name = ($to =~ /^\s*(.*?)\s*</) ? $1 : '';
 			$to_name =~ s/[<>[:^print:]]/_/g;
-			$to =~ s/^.*<(?:sips?:)?([^>]+)>\s*$/$1/;
+			if ($to =~ /^.*<[^>]+>\s*$/) {
+				$to =~ s/^.*<(?:sips?:)?([^>]+)>\s*$/$1/;
+			} else {
+				$to =~ s/^\s*(?:sips?:)?([^\s]+)\s*$/$1/;
+			}
 			$to =~ s/[\s"\/<>[:^print:]]/_/g;
 			my $t = time;
 			my ($sec, $min, $hour, $mday, $mon, $year, $wday) = localtime($t);
@@ -261,12 +269,20 @@ $ua->listen(
 		my $from = $call->get_peer;
 		my $from_name = ($from =~ /^\s*(.*?)\s*</) ? $1 : '';
 		$from_name =~ s/[<>[:^print:]]/_/g;
-		$from =~ s/^.*<(?:sips?:)?([^>]+)>\s*$/$1/;
+		if ($from =~ /^.*<[^>]+>\s*$/) {
+			$from =~ s/^.*<(?:sips?:)?([^>]+)>\s*$/$1/;
+		} else {
+			$from =~ s/^\s*(?:sips?:)?([^\s]+)\s*$/$1/;
+		}
 		$from =~ s/[\s"\/<>[:^print:]]/_/g;
 		my ($to) = sip_hdrval2parts(to => $call->{ctx}->{to});
 		my $to_name = ($to =~ /^\s*(.*?)\s*</) ? $1 : '';
 		$to_name =~ s/[<>[:^print:]]/_/g;
-		$to =~ s/^.*<(?:sips?:)?([^>]+)>\s*$/$1/;
+		if ($to =~ /^.*<[^>]+>\s*$/) {
+			$to =~ s/^.*<(?:sips?:)?([^>]+)>\s*$/$1/;
+		} else {
+			$to =~ s/^\s*(?:sips?:)?([^\s]+)\s*$/$1/;
+		}
 		$to =~ s/[\s"\/<>[:^print:]]/_/g;
 		my $t = time;
 		my ($sec, $min, $hour, $mday, $mon, $year, $wday) = localtime($t);
