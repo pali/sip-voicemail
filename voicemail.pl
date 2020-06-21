@@ -148,6 +148,10 @@ $ua->listen(
 		my $receive_email = $email;
 		if ($multiuser) {
 			my $for_user = (sip_uri2parts($for))[1];
+			if (not defined $for_user or not length $for_user) {
+				print localtime . " - Rejecting call, user was not specified\n";
+				return 0;
+			}
 			my (undef, undef, $uid, $gid, undef, undef, undef, $home) = getpwnam($for_user);
 			if (not defined $uid or not defined $gid) {
 				print localtime . " - Rejecting call, user $for_user does not exist\n";
