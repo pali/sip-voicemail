@@ -4,6 +4,7 @@
 use strict;
 use warnings;
 use Getopt::Long qw(:config posix_default bundling);
+use Time::Local qw(timegm);
 
 use Net::SIP;
 use Net::SIP::Util qw(create_rtp_sockets invoke_callback sip_hdrval2parts sip_uri2parts);
@@ -179,10 +180,13 @@ $ua->listen(
 			$to =~ s/^.*<(?:sips?:)?([^>]+)>\s*$/$1/;
 			$to =~ s/[\s"\/<>[:^print:]]/_/g;
 			my $t = time;
-			my ($sec, $min, $hour, $mday, $mon, $year, $wday) = gmtime($t);
-			my @mon_abbrv = qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
+			my ($sec, $min, $hour, $mday, $mon, $year, $wday) = localtime($t);
+			$year += 1900;
+			$mon += 1;
+			my $tz = int((timegm(localtime($t)) - $t) / 60);
+			my @mon_abbrv = qw(NULL Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
 			my @wday_abbrv = qw(Sun Mon Tue Wed Thu Fri Sat);
-			my $date_email = sprintf "%3s, %2d %3s %4d %02d:%02d:%02d +0000", $wday_abbrv[$wday], $mday, $mon_abbrv[$mon], 1900+$year, $hour, $min, $sec;
+			my $date_email = sprintf "%3s, %2d %3s %4d %02d:%02d:%02d %s%02d%02d", $wday_abbrv[$wday], $mday, $mon_abbrv[$mon], $year, $hour, $min, $sec, (($tz < 0) ? '-' : '+'), int(abs($tz)/60), abs($tz)%60;
 			my ($call_id) = $request->get_header('call-id');
 			my $mid = (defined $call_id) ? ('<missed-call-id-' . $call_id . ($call_id =~ /@/ ? '' : '@localhost') . '>') : undef;
 			print localtime . " - Sending missed call event to email address $receive_email\n";
@@ -265,13 +269,13 @@ $ua->listen(
 		$to =~ s/^.*<(?:sips?:)?([^>]+)>\s*$/$1/;
 		$to =~ s/[\s"\/<>[:^print:]]/_/g;
 		my $t = time;
-		my ($sec, $min, $hour, $mday, $mon, $year, $wday) = gmtime($t);
-		my @mon_abbrv = qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
-		my @wday_abbrv = qw(Sun Mon Tue Wed Thu Fri Sat);
-		my $date_email = sprintf "%3s, %2d %3s %4d %02d:%02d:%02d +0000", $wday_abbrv[$wday], $mday, $mon_abbrv[$mon], 1900+$year, $hour, $min, $sec;
-		($sec, $min, $hour, $mday, $mon, $year) = localtime($t);
+		my ($sec, $min, $hour, $mday, $mon, $year, $wday) = localtime($t);
 		$year += 1900;
 		$mon += 1;
+		my $tz = int((timegm(localtime($t)) - $t) / 60);
+		my @mon_abbrv = qw(NULL Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
+		my @wday_abbrv = qw(Sun Mon Tue Wed Thu Fri Sat);
+		my $date_email = sprintf "%3s, %2d %3s %4d %02d:%02d:%02d %s%02d%02d", $wday_abbrv[$wday], $mday, $mon_abbrv[$mon], $year, $hour, $min, $sec, (($tz < 0) ? '-' : '+'), int(abs($tz)/60), abs($tz)%60;
 		my $date = sprintf "%04d-%02d-%02d_%02d:%02d:%02d", $year, $mon, $mday, $hour, $min, $sec;
 		my $mid = (defined $call->{param}->{voicemail_call_id}) ? ('<voicemail-call-id-' . $call->{param}->{voicemail_call_id} . ($call->{param}->{voicemail_call_id} =~ /@/ ? '' : '@localhost') . '>') : undef;
 		my $receive_directory = $multiuser ? $param->{voicemail_user_directory} : $directory;
