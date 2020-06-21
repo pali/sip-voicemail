@@ -38,6 +38,12 @@ sub read_welcome_file {
 	return join '', <$fh>;
 }
 
+sub sip_split_name_addr {
+	my ($name_addr) = @_;
+	return ($name_addr, undef) unless $name_addr =~ /^\s*(\S*?)\s*<([^>]*)>\s*$/;
+	return ($2, $1);
+}
+
 my $listen = 'udp:127.0.0.1:5060';
 my $rtp = '';
 my $ports = '';
@@ -173,24 +179,22 @@ $ua->listen(
 			$receive_email =~ s/%u/$for_user/g;
 		}
 		if (length $receive_email) {
-			my $from_name = ($from =~ /^\s*(.*?)\s*</) ? $1 : '';
-			$from_name =~ s/[<>[:^print:]]/_/g;
-			if ($from =~ /^.*<[^>]+>\s*$/) {
-				$from =~ s/^.*<(?:sips?:)?([^>]+)>\s*$/$1/;
-			} else {
-				$from =~ s/^\s*(?:sips?:)?([^\s]+)\s*$/$1/;
-			}
-			$from =~ s/[\s"\/<>[:^print:]]/_/g;
+			my ($from_addr, $from_name) = sip_split_name_addr($from);
+			my ($from_domain, $from_user) = sip_uri2parts($from_addr);
+			$from_name = '' unless defined $from_name;
+			$from_user = '' unless defined $from_user;
+			$from_domain =~ s/:\w+$//;
+			my $from_uri = (length $from_user) ? "$from_user\@$from_domain" : $from_domain;
+			my $from_email = (length $from_name) ? "$from_name <$from_uri>" : $from_uri;
 			my ($to) = $request->get_header('to');
 			($to) = sip_hdrval2parts(to => $to);
-			my $to_name = ($to =~ /^\s*(.*?)\s*</) ? $1 : '';
-			$to_name =~ s/[<>[:^print:]]/_/g;
-			if ($to =~ /^.*<[^>]+>\s*$/) {
-				$to =~ s/^.*<(?:sips?:)?([^>]+)>\s*$/$1/;
-			} else {
-				$to =~ s/^\s*(?:sips?:)?([^\s]+)\s*$/$1/;
-			}
-			$to =~ s/[\s"\/<>[:^print:]]/_/g;
+			my ($to_addr, $to_name) = sip_split_name_addr($to);
+			my ($to_domain, $to_user) = sip_uri2parts($to_addr);
+			$to_name = '' unless defined $to_name;
+			$to_user = '' unless defined $to_user;
+			$to_domain =~ s/:\w+$//;
+			my $to_uri = (length $to_user) ? "$to_user\@$to_domain" : $to_domain;
+			my $to_email = (length $to_name) ? "$to_name <$to_uri>" : $to_uri;
 			my $t = time;
 			my ($sec, $min, $hour, $mday, $mon, $year, $wday) = localtime($t);
 			$year += 1900;
@@ -200,15 +204,15 @@ $ua->listen(
 			my @wday_abbrv = qw(Sun Mon Tue Wed Thu Fri Sat);
 			my $date_email = sprintf "%3s, %2d %3s %4d %02d:%02d:%02d %s%02d%02d", $wday_abbrv[$wday], $mday, $mon_abbrv[$mon], $year, $hour, $min, $sec, (($tz < 0) ? '-' : '+'), int(abs($tz)/60), abs($tz)%60;
 			my ($call_id) = $request->get_header('call-id');
-			my $mid = (defined $call_id) ? ('<missed-call-id-' . $call_id . ($call_id =~ /@/ ? '' : '@localhost') . '>') : undef;
+			my $mid_email = (defined $call_id) ? ('<missed-call-id-' . $call_id . ($call_id =~ /@/ ? '' : '@localhost') . '>') : "<missed-call-$t\@localhost>";
 			print localtime . " - Sending missed call event to email address $receive_email\n";
 			open my $missed_pipe, '|-', '/usr/sbin/sendmail', '-oi', '-oeq', '-f', $env_from, $receive_email
 				or do { print localtime . " - Error: Cannot spawn /usr/sbin/sendmail binary: $!\n"; print localtime . " - Rejecting call\n"; return 0; };
-			print $missed_pipe "From: " . (length $from_name ? "$from_name <$from>" : $from) . "\n";
-			print $missed_pipe "To: " . (length $to_name ? "$to_name <$to>" : $to) . "\n";
+			print $missed_pipe "From: $from_email\n";
+			print $missed_pipe "To: $to_email\n";
 			print $missed_pipe "Date: $date_email\n";
 			print $missed_pipe "Subject: SIP missed call\n";
-			print $missed_pipe "Message-ID: $mid\n" if defined $mid;
+			print $missed_pipe "Message-ID: $mid_email\n";
 			print $missed_pipe "MIME-Version: 1.0\n";
 			print $missed_pipe "Content-Type: text/plain\n";
 			print $missed_pipe "\n";
@@ -271,23 +275,23 @@ $ua->listen(
 			return $payload;
 		};
 		my $from = $call->get_peer;
-		my $from_name = ($from =~ /^\s*(.*?)\s*</) ? $1 : '';
-		$from_name =~ s/[<>[:^print:]]/_/g;
-		if ($from =~ /^.*<[^>]+>\s*$/) {
-			$from =~ s/^.*<(?:sips?:)?([^>]+)>\s*$/$1/;
-		} else {
-			$from =~ s/^\s*(?:sips?:)?([^\s]+)\s*$/$1/;
-		}
-		$from =~ s/[\s"\/<>[:^print:]]/_/g;
+		my ($from_addr, $from_name) = sip_split_name_addr($from);
+		my ($from_domain, $from_user) = sip_uri2parts($from_addr);
+		$from_name = '' unless defined $from_name;
+		$from_user = '' unless defined $from_user;
+		$from_domain =~ s/:\w+$//;
+		my $from_uri = (length $from_user) ? "$from_user\@$from_domain" : $from_domain;
+		my $from_email = (length $from_name) ? "$from_name <$from_uri>" : $from_uri;
+		my $from_uri_print = $from_uri;
+		$from_uri_print =~ s/[\s"\/<>[:^print:]]/_/g;
 		my ($to) = sip_hdrval2parts(to => $call->{ctx}->{to});
-		my $to_name = ($to =~ /^\s*(.*?)\s*</) ? $1 : '';
-		$to_name =~ s/[<>[:^print:]]/_/g;
-		if ($to =~ /^.*<[^>]+>\s*$/) {
-			$to =~ s/^.*<(?:sips?:)?([^>]+)>\s*$/$1/;
-		} else {
-			$to =~ s/^\s*(?:sips?:)?([^\s]+)\s*$/$1/;
-		}
-		$to =~ s/[\s"\/<>[:^print:]]/_/g;
+		my ($to_addr, $to_name) = sip_split_name_addr($to);
+		my ($to_domain, $to_user) = sip_uri2parts($to_addr);
+		$to_name = '' unless defined $to_name;
+		$to_user = '' unless defined $to_user;
+		$to_domain =~ s/:\w+$//;
+		my $to_uri = (length $to_user) ? "$to_user\@$to_domain" : $to_domain;
+		my $to_email = (length $to_name) ? "$to_name <$to_uri>" : $to_uri;
 		my $t = time;
 		my ($sec, $min, $hour, $mday, $mon, $year, $wday) = localtime($t);
 		$year += 1900;
@@ -296,10 +300,10 @@ $ua->listen(
 		my @mon_abbrv = qw(NULL Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
 		my @wday_abbrv = qw(Sun Mon Tue Wed Thu Fri Sat);
 		my $date_email = sprintf "%3s, %2d %3s %4d %02d:%02d:%02d %s%02d%02d", $wday_abbrv[$wday], $mday, $mon_abbrv[$mon], $year, $hour, $min, $sec, (($tz < 0) ? '-' : '+'), int(abs($tz)/60), abs($tz)%60;
-		my $date = sprintf "%04d-%02d-%02d_%02d:%02d:%02d", $year, $mon, $mday, $hour, $min, $sec;
-		my $mid = (defined $call->{param}->{voicemail_call_id}) ? ('<voicemail-call-id-' . $call->{param}->{voicemail_call_id} . ($call->{param}->{voicemail_call_id} =~ /@/ ? '' : '@localhost') . '>') : undef;
+		my $date_print = sprintf "%04d-%02d-%02d_%02d:%02d:%02d", $year, $mon, $mday, $hour, $min, $sec;
+		my $mid_email = (defined $call->{param}->{voicemail_call_id}) ? ('<voicemail-call-id-' . $call->{param}->{voicemail_call_id} . ($call->{param}->{voicemail_call_id} =~ /@/ ? '' : '@localhost') . '>') : "<voicemail-call-$t\@localhost>";
 		my $receive_directory = $multiuser ? $param->{voicemail_user_directory} : $directory;
-		my $receive_file = length $receive_directory ? ($receive_directory . '/voicemail_' . $date . '_' . $from . '.wav') : '';
+		my $receive_file = (length $receive_directory) ? ($receive_directory . '/voicemail_' . $date_print . '_' . $from_uri_print . '.wav') : '';
 		my $receive_email = $multiuser ? $param->{voicemail_user_email} : $email;
 		my $receive_fh;
 		my $receive_pipe;
@@ -324,15 +328,15 @@ $ua->listen(
 				print localtime . " - Sending voicemail to email address $receive_email\n";
 				open $receive_pipe, '|-', '/usr/sbin/sendmail', '-oi', '-oeq', '-f', $env_from, $receive_email
 					or do { print localtime . " - Error: Cannot spawn /usr/sbin/sendmail binary: $!\n"; $stop = 1; hangup($param); $call->bye; return; };
-				print $receive_pipe "From: " . (length $from_name ? "$from_name <$from>" : $from) . "\n";
-				print $receive_pipe "To: " . (length $to_name ? "$to_name <$to>" : $to) . "\n";
+				print $receive_pipe "From: $from_email\n";
+				print $receive_pipe "To: $to_email\n";
 				print $receive_pipe "Date: $date_email\n";
 				print $receive_pipe "Subject: SIP voicemail\n";
-				print $receive_pipe "Message-ID: $mid\n" if defined $mid;
+				print $receive_pipe "Message-ID: $mid_email\n";
 				print $receive_pipe "MIME-Version: 1.0\n";
 				print $receive_pipe "Content-Type: audio/vnd.wave; codec=7\n";
 				print $receive_pipe "Content-Disposition: attachment;\n";
-				print $receive_pipe "  filename=\"voicemail_${date}_${from}.wav\";\n";
+				print $receive_pipe "  filename=\"voicemail_${date_print}_${from_uri_print}.wav\";\n";
 				print $receive_pipe "  modification-date=\"$date_email\"\n";
 				print $receive_pipe "Content-Transfer-Encoding: base64\n";
 				print $receive_pipe "\n";
