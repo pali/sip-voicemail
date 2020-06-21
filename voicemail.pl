@@ -312,7 +312,8 @@ $ua->listen(
 				print $receive_pipe "MIME-Version: 1.0\n";
 				print $receive_pipe "Content-Type: audio/vnd.wave; codec=7\n";
 				print $receive_pipe "Content-Disposition: attachment;\n";
-				print $receive_pipe "  filename=\"voicemail_${date}_${from}.wav\"\n";
+				print $receive_pipe "  filename=\"voicemail_${date}_${from}.wav\";\n";
+				print $receive_pipe "  modification-date=\"$date_email\"\n";
 				print $receive_pipe "Content-Transfer-Encoding: base64\n";
 				print $receive_pipe "\n";
 				binmode $receive_pipe, ':via(Base64Stream)';
