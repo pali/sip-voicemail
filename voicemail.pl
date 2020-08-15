@@ -15,7 +15,7 @@ my $wave_ulaw_header = "WAVEfmt \x12\x00\x00\x00\x07\x00\x01\x00\x40\x1f\x00\x00
 
 sub read_welcome_file {
 	my ($welcome_file) = @_;
-	open my $fh, '<', $welcome_file
+	open my $fh, '<:raw', $welcome_file
 		or do { print localtime . " - Error: Cannot open welcome file $welcome_file: $!\n"; return ''; };
 	read($fh, my $header, 38) == 38
 		or do { print localtime . " - Error: Welcome file $welcome_file is too short\n"; return ''; };
@@ -206,7 +206,7 @@ $ua->listen(
 			my ($call_id) = $request->get_header('call-id');
 			my $mid_email = (defined $call_id) ? ('<missed-call-id-' . $call_id . ($call_id =~ /@/ ? '' : '@localhost') . '>') : "<missed-call-$t\@localhost>";
 			print localtime . " - Sending missed call event to email address $receive_email\n";
-			open my $missed_pipe, '|-', '/usr/sbin/sendmail', '-oi', '-oeq', '-f', $env_from, $receive_email
+			open my $missed_pipe, '|-:raw', '/usr/sbin/sendmail', '-oi', '-oeq', '-f', $env_from, $receive_email
 				or do { print localtime . " - Error: Cannot spawn /usr/sbin/sendmail binary: $!\n"; print localtime . " - Rejecting call\n"; return 0; };
 			print $missed_pipe "From: $from_email\n";
 			print $missed_pipe "To: $to_email\n";
@@ -318,8 +318,8 @@ $ua->listen(
 			}
 			if (not $receive_fh and length $receive_file) {
 				print localtime . " - Storing voicemail to file $receive_file\n";
-				open $receive_fh, '>', $receive_file
-					or do { print localtime . " - Error: Cannot open file $receive_file: $!\n"; $stop = 1; hangup($param); $call->bye; return; };
+				open $receive_fh, '>:raw', $receive_file
+					or do { print localtime . " - Error: Cannot open file $receive_file: $!\n"; $stop = 1; hangup($param); $call->bye(); return; };
 				chown $param->{voicemail_user_uid}, $param->{voicemail_user_gid}, $receive_file if $multiuser;
 				print $receive_fh "RIFF\xff\xff\xff\xff";
 				print $receive_fh $wave_ulaw_header;
@@ -327,8 +327,8 @@ $ua->listen(
 			}
 			if (not $receive_pipe and length $receive_email) {
 				print localtime . " - Sending voicemail to email address $receive_email\n";
-				open $receive_pipe, '|-', '/usr/sbin/sendmail', '-oi', '-oeq', '-f', $env_from, $receive_email
-					or do { print localtime . " - Error: Cannot spawn /usr/sbin/sendmail binary: $!\n"; $stop = 1; hangup($param); $call->bye; return; };
+				open $receive_pipe, '|-:raw', '/usr/sbin/sendmail', '-oi', '-oeq', '-f', $env_from, $receive_email
+					or do { print localtime . " - Error: Cannot spawn /usr/sbin/sendmail binary: $!\n"; $stop = 1; hangup($param); $call->bye(); return; };
 				print $receive_pipe "From: $from_email\n";
 				print $receive_pipe "To: $to_email\n";
 				print $receive_pipe "Date: $date_email\n";
