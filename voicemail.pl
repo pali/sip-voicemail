@@ -224,8 +224,8 @@ $ua->listen(
 	cb_invite => sub {
 		my ($call, $request) = @_;
 		my ($rtp_port, $rtp_sock, $rtcp_sock) = create_rtp_sockets($rtp, 2, $min_port, $max_port);
-		$rtp_sock or do { print localtime . " - Error: Cannot create rtp socket at $rtp: $!\n"; die; };
-		$rtcp_sock or do { print localtime . " - Error: Cannot create rtcp socket at $rtp: $!\n"; die; };
+		$rtp_sock or do { print localtime . " - Error: Cannot create rtp socket at $rtp: $!\n"; $call->cleanup(); return $request->create_response('503', 'Service Unavailable'); };
+		$rtcp_sock or do { print localtime . " - Error: Cannot create rtcp socket at $rtp: $!\n"; $call->cleanup(); return $request->create_response('503', 'Service Unavailable'); };
 		my $sdp = Net::SIP::SDP->new(
 			{
 				addr => $sdpaddr,
@@ -256,6 +256,7 @@ $ua->listen(
 			$call->{param}->{voicemail_user_email} = $email;
 			$call->{param}->{voicemail_user_email} =~ s/%u/$for_user/g;
 		}
+		return;
 	},
 	init_media => sub {
 		my ($call, $param) = @_;
