@@ -26,16 +26,14 @@ sub read_welcome_file {
 	while (1) {
 		read($fh, my $type, 4) == 4
 			or do { print localtime . " - Error: Welcome file $welcome_file has corrupted WAVE header\n"; return ''; };
-		last if $type eq 'data';
 		read($fh, my $length, 4) == 4
 			or do { print localtime . " - Error: Welcome file $welcome_file has corrupted WAVE header\n"; return ''; };
 		$length = unpack 'V', $length;
+		last if $type eq 'data';
 		read($fh, my $dummy, $length) == $length
 			or do { print localtime . " - Error: Welcome file $welcome_file has corrupted WAVE header\n"; return ''; };
 	}
-	read($fh, my $length, 4) == 4
-		or do { print localtime . " - Error: Welcome file $welcome_file has corrupted WAVE header\n"; return ''; };
-	return join '', <$fh>;
+	return do { local $/; scalar <$fh> };
 }
 
 sub sip_split_name_addr {
