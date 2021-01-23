@@ -258,12 +258,14 @@ $ua->listen(
 	},
 	init_media => sub {
 		my ($call, $param) = @_;
+		my $stop_send_receive;
 		my $welcome_file = $multiuser ? $param->{voicemail_user_welcome} : $welcome;
 		my $welcome_buffer = length $welcome_file ? read_welcome_file($welcome_file) : '';
 		my $send_welcome_buffer = $welcome_buffer;
 		my $send_welcome_state;
 		my $send_welcome = sub {
 			my ($seq, $channel) = @_;
+			return if $stop_send_receive;
 			if (not $send_welcome_state) {
 				$send_welcome_state = 1;
 				print localtime . ' - Sending welcome message' . (length $welcome_buffer ? " from file $welcome_file" : '') . "\n";
@@ -306,18 +308,17 @@ $ua->listen(
 		my $receive_email = $multiuser ? $param->{voicemail_user_email} : $email;
 		my $receive_fh;
 		my $receive_pipe;
-		my $stop;
 		my $receive_voicemail = sub {
 			my ($payload, $seq, $timestamp, $channel) = @_;
-			return if $stop;
+			return if $stop_send_receive;
 			return if $afterwelcome and length $send_welcome_buffer > 0;
 			if (not $receive_fh and not $receive_pipe) {
-				$param->{stop_rtp_timer} = $call->add_timer($timeout, sub { print localtime . "Hangup (timeout)\n"; $stop = 1; $call->bye() });
+				$param->{stop_rtp_timer} = $call->add_timer($timeout, sub { print localtime . "Hangup (timeout)\n"; $stop_send_receive = 1; $call->bye() });
 			}
 			if (not $receive_fh and length $receive_file) {
 				print localtime . " - Storing voicemail to file $receive_file\n";
 				open $receive_fh, '>:raw', $receive_file
-					or do { print localtime . " - Error: Cannot open file $receive_file: $!\n"; $stop = 1; hangup($param); $call->bye(); return; };
+					or do { print localtime . " - Error: Cannot open file $receive_file: $!\n"; $stop_send_receive = 1; hangup($param); $call->bye(); return; };
 				chown $param->{voicemail_user_uid}, $param->{voicemail_user_gid}, $receive_file if $multiuser;
 				print $receive_fh "RIFF\xff\xff\xff\xff";
 				print $receive_fh $wave_ulaw_header;
@@ -326,7 +327,7 @@ $ua->listen(
 			if (not $receive_pipe and length $receive_email) {
 				print localtime . " - Sending voicemail to email address $receive_email\n";
 				open $receive_pipe, '|-:raw', '/usr/sbin/sendmail', '-oi', '-oeq', '-f', $env_from, $receive_email
-					or do { print localtime . " - Error: Cannot spawn /usr/sbin/sendmail binary: $!\n"; $stop = 1; hangup($param); $call->bye(); return; };
+					or do { print localtime . " - Error: Cannot spawn /usr/sbin/sendmail binary: $!\n"; $stop_send_receive = 1; hangup($param); $call->bye(); return; };
 				print $receive_pipe "From: $from_email\n";
 				print $receive_pipe "To: $to_email\n";
 				print $receive_pipe "Date: $date_email\n";
