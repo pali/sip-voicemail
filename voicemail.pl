@@ -313,7 +313,7 @@ $ua->listen(
 			return if $stop_send_receive;
 			return if $afterwelcome and length $send_welcome_buffer > 0;
 			if (not $receive_fh and not $receive_pipe) {
-				$param->{voicemail_stop_rtp_timer} = $call->add_timer($timeout, sub { print localtime . "Hangup (timeout)\n"; $stop_send_receive = 1; $call->bye() });
+				$param->{voicemail_stop_rtp_timer} = $call->add_timer($timeout, sub { print localtime . " - Hangup (timeout)\n"; $stop_send_receive = 1; $call->bye() });
 			}
 			if (not $receive_fh and length $receive_file) {
 				print localtime . " - Storing voicemail to file $receive_file\n";
